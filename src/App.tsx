@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Star, Trophy, Wine, Beer, RotateCcw, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Star, Trophy, Beer, RotateCcw, ChevronRight, Zap, PartyPopper } from 'lucide-react';
 
 // Game States
 enum GameState {
@@ -9,25 +9,32 @@ enum GameState {
   REVEALED = 'REVEALED'
 }
 
-interface Prize {
+type Brand = 'SAGRES' | 'HEINEKEN';
+
+interface PrizeTemplate {
   id: string;
   title: string;
   subtitle: string;
   icon: any;
-  color: string;
   isWinner: boolean;
+  intensity: 'low' | 'med' | 'high' | 'none';
 }
 
-const INITIAL_PRIZES: Prize[] = [
-  { id: 'sm', title: '3 Shots + 3 Finos', subtitle: 'Prémio Simples', icon: Wine, color: '#f2d47a', isWinner: true },
-  { id: 'lg', title: '6 Shots + 6 Finos', subtitle: 'GRANDE PRÉMIO', icon: Trophy, color: '#ff2b00', isWinner: true },
-  { id: 'retry1', title: 'Sem Prémio', subtitle: 'Tenta outra vez', icon: RotateCcw, color: '#999', isWinner: false },
-  { id: 'retry2', title: 'Sem Prémio', subtitle: 'Tenta outra vez', icon: RotateCcw, color: '#999', isWinner: false },
+const PRIZE_TEMPLATES: PrizeTemplate[] = [
+  { id: 'fino1', title: '1 Fino de Oferta', subtitle: 'Brinde Especial', icon: Beer, isWinner: true, intensity: 'low' },
+  { id: 'fino3', title: '3 Finos de Oferta', subtitle: 'Sorte a triplicar!', icon: Beer, isWinner: true, intensity: 'med' },
+  { id: 'regua', title: '1 RÉGUA DE OFERTA', subtitle: 'O GRANDE PRÉMIO!', icon: Trophy, isWinner: true, intensity: 'high' },
+  { id: 'retry1', title: 'Sem Prémio', subtitle: 'Mais sorte no próximo pedido', icon: RotateCcw, isWinner: false, intensity: 'none' },
+  { id: 'retry2', title: 'Sem Prémio', subtitle: 'Tenta outra vez!', icon: RotateCcw, isWinner: false, intensity: 'none' },
 ];
 
-// Helper to shuffle outside component for potential initial state
-const getShuffledPrizes = () => {
-  const arr = [...INITIAL_PRIZES];
+const getShuffledPrizes = (brand: Brand) => {
+  const arr = PRIZE_TEMPLATES.map(p => ({
+    ...p,
+    brand,
+    displayTitle: p.isWinner ? `${p.title} (${brand})` : p.title
+  }));
+  
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -36,16 +43,17 @@ const getShuffledPrizes = () => {
 };
 
 export default function App() {
+  const [brand, setBrand] = useState<Brand>('HEINEKEN');
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [gameState, setGameState] = useState<GameState>(GameState.PICKING);
-  const [prizes, setPrizes] = useState<Prize[]>(() => getShuffledPrizes());
-  const [lastPrize, setLastPrize] = useState<Prize | null>(null);
+  const [prizes, setPrizes] = useState(() => getShuffledPrizes('HEINEKEN'));
+  const [lastPrize, setLastPrize] = useState<any | null>(null);
   const [selectedBoxIndex, setSelectedBoxIndex] = useState<number | null>(null);
+  const [showFlash, setShowFlash] = useState(false);
 
-  // Progressive Shuffle (Fisher-Yates) for better randomness on every play
-  const shufflePrizes = useCallback(() => {
-    setPrizes(getShuffledPrizes());
-  }, []);
+  const shufflePrizes = useCallback((newBrand: Brand = brand) => {
+    setPrizes(getShuffledPrizes(newBrand));
+  }, [brand]);
 
   const handleOpen = useCallback(() => {
     if (gameState !== GameState.PICKING) return;
@@ -53,15 +61,19 @@ export default function App() {
     setSelectedBoxIndex(focusedIndex);
     setGameState(GameState.OPENING);
 
-    // Opening sequence
     setTimeout(() => {
+      const winner = prizes[focusedIndex];
       setGameState(GameState.REVEALED);
-      setLastPrize(prizes[focusedIndex]);
-    }, 1200); // Slightly faster for responsiveness
+      setLastPrize(winner);
+      
+      if (winner.isWinner) {
+        setShowFlash(true);
+        setTimeout(() => setShowFlash(false), 500);
+      }
+    }, 1200);
   }, [gameState, focusedIndex, prizes]);
 
   const resetGame = useCallback(() => {
-    // Crucial: Shuffle immediately when resetting for the next round
     shufflePrizes();
     setGameState(GameState.PICKING);
     setSelectedBoxIndex(null);
@@ -70,6 +82,14 @@ export default function App() {
   // Keyboard/Remote Handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle Brand with a specific key (e.g., 'b')
+      if (e.key.toLowerCase() === 'b') {
+        const nextBrand = brand === 'HEINEKEN' ? 'SAGRES' : 'HEINEKEN';
+        setBrand(nextBrand);
+        shufflePrizes(nextBrand);
+        return;
+      }
+
       if (gameState === GameState.REVEALED) {
         if (e.key === 'Enter' || e.key === 'OK' || e.key === 'Select') {
           resetGame();
@@ -81,10 +101,10 @@ export default function App() {
 
       switch (e.key) {
         case 'ArrowLeft':
-          setFocusedIndex(prev => (prev > 0 ? prev - 1 : 3));
+          setFocusedIndex(prev => (prev > 0 ? prev - 1 : 4));
           break;
         case 'ArrowRight':
-          setFocusedIndex(prev => (prev < 3 ? prev + 1 : 0));
+          setFocusedIndex(prev => (prev < 4 ? prev + 1 : 0));
           break;
         case 'Enter':
         case 'OK':
@@ -96,113 +116,143 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, handleOpen, resetGame, focusedIndex]);
+  }, [gameState, handleOpen, resetGame, focusedIndex, brand, shufflePrizes]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden flex flex-col font-sans bg-[#050d08]">
+    <div className={`relative w-full h-screen overflow-hidden flex flex-col font-sans bg-[#050d08] ${showFlash ? 'shake-screen' : ''}`}>
+      {/* Screen Flash Effect */}
+      <AnimatePresence>
+        {showFlash && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-white"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Background Decorative Gradients */}
       <div className="absolute inset-0 z-0 opacity-40">
-        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[60%] h-[40%] bg-[radial-gradient(circle,rgba(0,129,48,0.4)_0%,transparent_70%)]" />
-        <div className="absolute bottom-[-5%] left-0 w-[30%] h-[30%] bg-[radial-gradient(circle,rgba(255,43,0,0.15)_0%,transparent_70%)]" />
+        <div className={`absolute top-[-10%] left-1/2 -translate-x-1/2 w-[60%] h-[40%] transition-colors duration-1000 ${brand === 'HEINEKEN' ? 'bg-[radial-gradient(circle,rgba(0,129,48,0.4)_0%,transparent_70%)]' : 'bg-[radial-gradient(circle,rgba(255,43,0,0.3)_0%,transparent_70%)]'}`} />
       </div>
 
       {/* Top Bar */}
       <header className="relative z-10 px-8 py-6 flex justify-between items-center border-b border-white/5 bg-black">
         <div className="flex flex-col">
           <span className="text-xs font-black tracking-widest text-[#bfd0c2] uppercase opacity-70">Cheers O Bar</span>
-          <h1 className="text-4xl font-black text-white leading-tight">4 CAIXAS CHEERS</h1>
+          <h1 className="text-4xl font-black text-white leading-tight">5 CAIXAS DA SORTE</h1>
         </div>
+        
+        <div className="flex items-center gap-4 bg-white/5 p-2 rounded-xl border border-white/10">
+          <button 
+            onClick={() => { setBrand('SAGRES'); shufflePrizes('SAGRES'); }}
+            className={`px-4 py-2 rounded-lg font-black transition-all ${brand === 'SAGRES' ? 'bg-[#ff2b00] text-white scale-105' : 'text-white/40'}`}
+          >
+            SAGRES
+          </button>
+          <button 
+            onClick={() => { setBrand('HEINEKEN'); shufflePrizes('HEINEKEN'); }}
+            className={`px-4 py-2 rounded-lg font-black transition-all ${brand === 'HEINEKEN' ? 'bg-[#008130] text-white scale-105' : 'text-white/40'}`}
+          >
+            HEINEKEN
+          </button>
+        </div>
+
         <div className="text-right flex flex-col">
-          <span className="text-xs font-black tracking-widest text-[#bfd0c2] uppercase opacity-70">Último Resultado</span>
-          <span className="text-xl font-bold text-[#f2d47a]">{lastPrize ? lastPrize.title : 'Pronto para jogar'}</span>
+          <span className="text-xs font-black tracking-widest text-[#bfd0c2] uppercase opacity-70">Último Prémio</span>
+          <span className="text-xl font-bold text-[#f2d47a]">{lastPrize ? lastPrize.displayTitle : 'Boa Sorte!'}</span>
         </div>
       </header>
 
       {/* Main Game Stage */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-12">
-        <div className="mb-12 text-center">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
+        <div className="mb-10 text-center">
           <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white/5 border border-white/10 text-lg font-bold text-white/90">
-            <Star className="w-5 h-5 fill-[#ff2b00] text-[#ff2b00]" />
-            PATROCINADO POR HEINEKEN
-            <Star className="w-5 h-5 fill-[#ff2b00] text-[#ff2b00]" />
+            <Zap className={`w-5 h-5 ${brand === 'HEINEKEN' ? 'text-[#008130]' : 'text-[#ff2b00]'} fill-current`} />
+            PEDE UMA RÉGUA DE {brand} PARA PARTICIPAR
+            <Zap className={`w-5 h-5 ${brand === 'HEINEKEN' ? 'text-[#008130]' : 'text-[#ff2b00]'} fill-current`} />
           </div>
           <p className="mt-4 text-xl font-medium text-white/60 uppercase tracking-widest">
-            {gameState === GameState.PICKING ? 'Escolhe a tua caixa e carrega OK' : 'A abrir...'}
+            {gameState === GameState.PICKING ? 'Qual será a caixa com a régua grátis?' : 'Processando sorteio...'}
           </p>
         </div>
 
         {/* Boxes Grid */}
-        <div className="grid grid-cols-4 gap-8 w-full max-w-6xl">
-          {[0, 1, 2, 3].map((idx) => (
+        <div className="grid grid-cols-5 gap-6 w-full max-w-7xl">
+          {[0, 1, 2, 3, 4].map((idx) => (
             <div key={idx} className="relative aspect-[4/5] flex flex-col items-center">
               <motion.div
-                initial={false}
                 animate={{
-                  scale: focusedIndex === idx ? 1.05 : 0.95,
-                  y: focusedIndex === idx ? -10 : 0
+                  scale: focusedIndex === idx ? 1.08 : 0.95,
+                  y: focusedIndex === idx ? -15 : 0,
+                  rotateZ: focusedIndex === idx ? [0, -1, 1, 0] : 0
                 }}
-                className={`w-full h-full rounded-2xl border-4 transition-colors duration-200 overflow-hidden relative shadow-2xl
+                transition={{
+                  rotateZ: focusedIndex === idx ? { repeat: Infinity, duration: 2 } : {}
+                }}
+                className={`w-full h-full rounded-2xl border-4 transition-all duration-300 overflow-hidden relative shadow-2xl
                   ${focusedIndex === idx 
-                    ? 'border-white shadow-[0_0_40px_rgba(255,255,255,0.2)]' 
-                    : 'border-white/10 dark-inner-shadow'
+                    ? 'border-white shadow-[0_0_50px_rgba(255,255,255,0.3)] z-20' 
+                    : 'border-white/10 opacity-80'
                   }
                   ${selectedBoxIndex === idx && gameState === GameState.OPENING ? 'animate-bounce' : ''}
-                  ${idx === 0 || idx === 3 ? 'bg-gradient-to-br from-[#008130] to-[#014d1d]' : 'bg-gradient-to-br from-[#ff2b00] to-[#6b1200]'}
+                  bg-gradient-to-br from-[#11261a] to-black
                 `}
               >
-                {/* Box Detail */}
-                <div className="absolute inset-x-3 top-3 h-12 rounded-xl border border-white/20 bg-white/10" />
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                  <span className="text-sm font-black opacity-60 uppercase mb-2">Caixa {idx + 1}</span>
-                  <div className="text-3xl font-black italic tracking-tighter flex items-center">
-                    CHEERS<span className="text-[#ff2b00] ml-1">★</span>
+                {/* Visual Content based on brand */}
+                <div className={`absolute inset-0 opacity-20 ${brand === 'HEINEKEN' ? 'bg-[#008130]' : 'bg-[#ff2b00]'}`} />
+                
+                <div className="absolute inset-x-3 top-3 h-10 rounded-xl border border-white/10 bg-white/5" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                  <span className="text-[10px] font-black opacity-40 uppercase mb-1">BOX {idx + 1}</span>
+                  <div className="text-3xl font-black italic tracking-tighter flex flex-col items-center">
+                    <span className="text-white">CHEERS</span>
+                    <Star className={`w-8 h-8 ${brand === 'HEINEKEN' ? 'text-[#008130]' : 'text-[#ff2b00]'} fill-current`} />
                   </div>
                 </div>
 
-                {/* Focus Indicator */}
+                {/* Focus Arrow */}
                 {focusedIndex === idx && gameState === GameState.PICKING && (
                   <motion.div 
                     layoutId="cursor"
-                    className="absolute -top-4 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-b-[20px] border-b-white drop-shadow-lg"
+                    className="absolute -top-6 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[18px] border-l-transparent border-r-[18px] border-r-transparent border-b-[24px] border-b-white drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]"
                   />
                 )}
               </motion.div>
-              
-              {/* Box Shadow */}
-              <div className="w-2/3 h-4 bg-black/40 blur-lg rounded-full mt-2" />
+              <div className="w-2/3 h-4 bg-black/50 blur-xl rounded-full mt-4" />
             </div>
           ))}
         </div>
       </main>
 
       {/* Footer Info */}
-      <footer className="relative z-10 p-8 grid grid-cols-3 gap-6">
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-5">
-          <div className="w-12 h-12 rounded-full bg-[#008130]/20 flex items-center justify-center">
-            {gameState === GameState.PICKING ? <ChevronRight className="text-[#008130]" /> : <Star className="text-[#f2d47a] animate-spin" />}
+      <footer className="relative z-10 p-6 grid grid-cols-3 gap-6">
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${brand === 'HEINEKEN' ? 'bg-[#008130]/20 text-[#008130]' : 'bg-[#ff2b00]/20 text-[#ff2b00]'}`}>
+            <ChevronRight className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-wider">Estado Atual</span>
-            <p className="text-lg font-black text-white uppercase">{gameState === GameState.PICKING ? `Caixa ${focusedIndex + 1} pronta` : 'A Carregar...'}</p>
+            <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">Modo Ativo</span>
+            <p className="text-base font-black text-white uppercase">Sorteio {brand}</p>
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-5">
-          <div className="w-12 h-12 rounded-full bg-[#f2d47a]/20 flex items-center justify-center">
-            <Trophy className="text-[#f2d47a]" />
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4 justify-center">
+          <div className="flex -space-x-2">
+            <div className="w-8 h-8 rounded-full bg-[#f2d47a] flex items-center justify-center border-2 border-black"><Star size={14} fill="black" /></div>
+            <div className="w-8 h-8 rounded-full bg-[#008130] flex items-center justify-center border-2 border-black"><Beer size={14} color="white" /></div>
+            <div className="w-8 h-8 rounded-full bg-[#ff2b00] flex items-center justify-center border-2 border-black"><Trophy size={14} color="white" /></div>
           </div>
-          <div>
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-wider">Prémios Disponíveis</span>
-            <p className="text-lg font-black text-white uppercase">Shots & Finos</p>
-          </div>
+          <p className="text-base font-black text-white uppercase tracking-tight">Vários Prémios em Jogo</p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-5">
-          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center font-black text-white">OK</div>
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4 justify-end text-right">
           <div>
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-wider">Comando TV</span>
-            <p className="text-lg font-black text-white uppercase">{gameState === GameState.REVEALED ? 'Carrega OK p/ Novo Jogo' : 'Usa as Setas + OK'}</p>
+            <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">Comando TV</span>
+            <p className="text-base font-black text-white uppercase">OK para Ganhar</p>
           </div>
+          <div className="w-12 h-10 rounded-lg bg-white/10 flex items-center justify-center font-black text-white border border-white/10">OK</div>
         </div>
       </footer>
 
@@ -213,48 +263,104 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-10"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-6"
           >
-            <motion.div
-              initial={{ scale: 0.8, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="bg-[#11261a] border-4 border-white/10 w-full max-w-4xl p-16 rounded-[40px] text-center shadow-2xl relative overflow-hidden"
-            >
-              <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-transparent via-[#f2d47a] to-transparent" />
-              
-              <span className="text-xs font-black tracking-[0.3em] text-white/40 uppercase">Cheers O Bar Apresenta</span>
-              
-              <div className="mt-8 flex justify-center">
-                <div className={`p-8 rounded-full ${lastPrize.isWinner ? 'bg-[#008130]/20 glow-gold' : 'bg-red-500/10'}`}>
-                  <lastPrize.icon className={`w-24 h-24 ${lastPrize.isWinner ? 'text-[#f2d47a]' : 'text-red-500'}`} strokeWidth={1.5} />
-                </div>
-              </div>
+            {/* Win Explosion Background */}
+            {lastPrize.isWinner && (
+              <motion.div 
+                animate={{ 
+                  scale: [1, 1.5, 1],
+                  opacity: [0.3, 0.6, 0.3]
+                }}
+                transition={{ duration: 0.5, repeat: Infinity }}
+                className={`absolute inset-0 z-0 ${lastPrize.brand === 'HEINEKEN' ? 'bg-[#008130]/20' : 'bg-[#ff2b00]/20'} blur-[100px]`}
+              />
+            )}
 
-              <h2 className="mt-10 text-8xl font-black italic tracking-tighter text-white uppercase leading-none">
-                {lastPrize.title}
+            <motion.div
+              initial={{ scale: 0.5, y: 100, rotate: -5 }}
+              animate={{ 
+                scale: 1, 
+                y: 0, 
+                rotate: 0,
+                transition: { type: "spring", damping: 12, stiffness: 100 }
+              }}
+              className={`relative z-10 w-full max-w-4xl p-12 rounded-[50px] text-center border-4 shadow-2xl overflow-hidden
+                ${lastPrize.isWinner 
+                  ? 'bg-[#11261a] border-[#f2d47a]/50 shadow-[0_0_100px_rgba(242,212,122,0.2)]' 
+                  : 'bg-[#1a0b0b] border-white/10'
+                }
+              `}
+            >
+              {/* Animated Confection for Winners */}
+              {lastPrize.isWinner && (
+                <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-50">
+                  <motion.div 
+                    animate={{ y: [-20, 20], opacity: [0, 1, 0] }}
+                    transition={{ repeat: Infinity, duration: 1 }}
+                    className="absolute top-10 left-1/4"><PartyPopper className="text-[#f2d47a]" size={40}/></motion.div>
+                  <motion.div 
+                    animate={{ y: [0, -30], opacity: [0, 1, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.2, delay: 0.3 }}
+                    className="absolute bottom-20 right-1/4"><Star className="text-[#f2d47a] fill-current" size={30}/></motion.div>
+                </div>
+              )}
+
+              <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              
+              <span className="text-sm font-black tracking-[0.5em] text-[#bfd0c2] uppercase opacity-60">Sorteio Cheers O Bar</span>
+              
+              <motion.div 
+                animate={lastPrize.isWinner ? { 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -5, 5, 0]
+                } : {}}
+                transition={{ duration: 0.6, repeat: lastPrize.isWinner ? Infinity : 0 }}
+                className="mt-8 flex justify-center"
+              >
+                <div className={`p-10 rounded-full border-4 ${lastPrize.isWinner ? 'bg-white/5 border-[#f2d47a] text-[#f2d47a]' : 'bg-white/5 border-white/10 text-white/40'}`}>
+                  <lastPrize.icon className="w-24 h-24" strokeWidth={1} />
+                </div>
+              </motion.div>
+
+              <h2 className={`mt-10 text-8xl font-black italic tracking-tighter uppercase leading-none ${lastPrize.isWinner ? 'text-white' : 'text-white/40'}`}>
+                {lastPrize.displayTitle}
               </h2>
               
-              <p className="mt-6 text-2xl font-bold text-[#f2d47a] tracking-widest uppercase opacity-80">
+              <p className={`mt-6 text-3xl font-black tracking-[0.2em] uppercase ${lastPrize.isWinner ? 'text-[#f2d47a]' : 'text-white/30'}`}>
                 {lastPrize.subtitle}
               </p>
 
-              <div className="mt-16 flex items-center justify-center gap-6">
-                <div className="px-6 py-3 bg-white/5 rounded-full text-sm font-black text-white/60 tracking-widest border border-white/10 uppercase">
-                  Pressiona OK para continuar
-                </div>
-                <div className="flex items-center gap-2 text-[#008130] font-black tracking-widest uppercase">
-                  <Star className="w-5 h-5 fill-current" />
-                  HEINEKEN NIGHTS
-                </div>
+              <div className="mt-16 flex items-center justify-center gap-8">
+                <motion.div 
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="px-8 py-4 bg-white text-black rounded-2xl text-lg font-black tracking-widest uppercase"
+                >
+                  Pressiona OK para Novo Jogo
+                </motion.div>
               </div>
+              
+              {lastPrize.isWinner && (
+                <div className="mt-8 text-[#008130] font-black flex items-center justify-center gap-3 tracking-[0.3em]">
+                  <Star size={20} fill="currentColor" />
+                  HEINEKEN & SAGRES NIGHTS
+                  <Star size={20} fill="currentColor" />
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
       <style>{`
-        .dark-inner-shadow {
-          box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+        @keyframes subtle-shake {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(-0.5deg); }
+          75% { transform: rotate(0.5deg); }
+        }
+        .box-container {
+          perspective: 1000px;
         }
       `}</style>
     </div>
