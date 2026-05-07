@@ -107,7 +107,7 @@ export default function App() {
       </div>
 
       {/* Top Bar */}
-      <header className="relative z-10 px-8 py-6 flex justify-between items-center border-b border-white/5 bg-black/20 backdrop-blur-sm">
+      <header className="relative z-10 px-8 py-6 flex justify-between items-center border-b border-white/5 bg-black">
         <div className="flex flex-col">
           <span className="text-xs font-black tracking-widest text-[#bfd0c2] uppercase opacity-70">Cheers O Bar</span>
           <h1 className="text-4xl font-black text-white leading-tight">4 CAIXAS CHEERS</h1>
@@ -213,12 +213,12 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-10"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-10"
           >
             <motion.div
               initial={{ scale: 0.8, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="bg-[#11261a] border-4 border-white/20 w-full max-w-4xl p-16 rounded-[40px] text-center shadow-[0_0_100px_rgba(0,129,48,0.3)] relative overflow-hidden"
+              className="bg-[#11261a] border-4 border-white/10 w-full max-w-4xl p-16 rounded-[40px] text-center shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-transparent via-[#f2d47a] to-transparent" />
               
