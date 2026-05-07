@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, Trophy, Wine, Beer, RotateCcw, ChevronRight, ChevronLeft } from 'lucide-react';
 
@@ -25,26 +25,27 @@ const INITIAL_PRIZES: Prize[] = [
   { id: 'retry2', title: 'Sem Prémio', subtitle: 'Tenta outra vez', icon: RotateCcw, color: '#999', isWinner: false },
 ];
 
+// Helper to shuffle outside component for potential initial state
+const getShuffledPrizes = () => {
+  const arr = [...INITIAL_PRIZES];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
 export default function App() {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [gameState, setGameState] = useState<GameState>(GameState.PICKING);
-  const [prizes, setPrizes] = useState<Prize[]>([]);
+  const [prizes, setPrizes] = useState<Prize[]>(() => getShuffledPrizes());
   const [lastPrize, setLastPrize] = useState<Prize | null>(null);
   const [selectedBoxIndex, setSelectedBoxIndex] = useState<number | null>(null);
 
   // Progressive Shuffle (Fisher-Yates) for better randomness on every play
   const shufflePrizes = useCallback(() => {
-    const arr = [...INITIAL_PRIZES];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    setPrizes(arr);
+    setPrizes(getShuffledPrizes());
   }, []);
-
-  useEffect(() => {
-    shufflePrizes();
-  }, [shufflePrizes]);
 
   const handleOpen = useCallback(() => {
     if (gameState !== GameState.PICKING) return;
