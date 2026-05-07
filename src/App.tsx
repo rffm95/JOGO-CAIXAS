@@ -77,20 +77,29 @@ export default function App() {
     setSelectedBoxIndex(null);
   }, [shufflePrizes]);
 
-  // Keyboard/Remote Handler avec mapping TV robuste
+  // Keyboard/Remote Handler com mapping TV robusto
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key || '';
-      const keyCode = e.keyCode;
+    // Force focus on mount to capture remote events
+    window.focus();
 
-      // Check for OK / Enter
-      const isOK = key === 'Enter' || key === 'OK' || key === 'Select' || keyCode === 13;
-      const isLeft = key === 'ArrowLeft' || keyCode === 37;
-      const isRight = key === 'ArrowRight' || keyCode === 39;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const keyCode = e.keyCode;
+      const key = (e.key || '').toLowerCase();
+
+      // Mapeamento extensivo para Smart TVs (Hisense, Samsung, LG, etc)
+      const isOK = keyCode === 13 || keyCode === 29443 || keyCode === 65376 || key === 'enter' || key === 'ok' || key === 'select';
+      const isLeft = keyCode === 37 || key === 'arrowleft';
+      const isRight = keyCode === 39 || key === 'arrowright';
+      const isUp = keyCode === 38 || key === 'arrowup';
+      const isDown = keyCode === 40 || key === 'arrowdown';
+
+      if (isOK || isLeft || isRight || isUp || isDown) {
+        // Importante: Previne o cursor do browser da TV de se mexer
+        e.preventDefault();
+      }
 
       if (gameState === GameState.REVEALED) {
         if (isOK) {
-          e.preventDefault();
           resetGame();
         }
         return;
@@ -99,20 +108,17 @@ export default function App() {
       if (gameState !== GameState.PICKING) return;
 
       if (isLeft) {
-        e.preventDefault();
         setFocusedIndex(prev => (prev > 0 ? prev - 1 : 4));
       } else if (isRight) {
-        e.preventDefault();
         setFocusedIndex(prev => (prev < 4 ? prev + 1 : 0));
       } else if (isOK) {
-        e.preventDefault();
         handleOpen();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, handleOpen, resetGame, focusedIndex]);
+    window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [gameState, handleOpen, resetGame]);
 
   return (
     <div className={`relative w-full h-screen overflow-hidden flex flex-col font-sans bg-[#050d08] ${showFlash ? 'shake-screen' : ''}`}>
