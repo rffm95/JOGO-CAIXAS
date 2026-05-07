@@ -86,16 +86,20 @@ export default function App() {
       const keyCode = e.keyCode;
       const key = (e.key || '').toLowerCase();
 
-      // Mapeamento extensivo para Smart TVs (Hisense, Samsung, LG, etc)
-      const isOK = keyCode === 13 || keyCode === 29443 || keyCode === 65376 || key === 'enter' || key === 'ok' || key === 'select';
-      const isLeft = keyCode === 37 || key === 'arrowleft';
-      const isRight = keyCode === 39 || key === 'arrowright';
-      const isUp = keyCode === 38 || key === 'arrowup';
-      const isDown = keyCode === 40 || key === 'arrowdown';
+      // Mapeamento extensivo para Smart TVs (Hisense, Samsung, LG, Sony, Phillips)
+      // Hisense 2025 pode usar keyCodes específicos ou standard Enter
+      const isOK = [13, 29443, 65376, 16777221, 10009, 102, 483, 1014].includes(keyCode) || 
+                   ['enter', 'ok', 'select', 'accept', 'exec'].includes(key);
+      
+      const isLeft = keyCode === 37 || key === 'arrowleft' || key === 'left';
+      const isRight = keyCode === 39 || key === 'arrowright' || key === 'right';
+      const isUp = keyCode === 38 || key === 'arrowup' || key === 'up';
+      const isDown = keyCode === 40 || key === 'arrowdown' || key === 'down';
 
       if (isOK || isLeft || isRight || isUp || isDown) {
-        // Importante: Previne o cursor do browser da TV de se mexer
+        // Importante: Previne o cursor do browser da TV de se mexer ou scrollar
         e.preventDefault();
+        e.stopPropagation();
       }
 
       if (gameState === GameState.REVEALED) {
@@ -116,12 +120,21 @@ export default function App() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+    window.addEventListener('keydown', handleKeyDown, true);
+    // Auto-foco global
+    window.focus();
+    
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [gameState, handleOpen, resetGame]);
 
   return (
-    <div className={`relative w-full h-screen overflow-hidden flex flex-col font-sans bg-[#050d08] ${showFlash ? 'shake-screen' : ''}`}>
+    <div 
+      className={`relative w-full h-screen overflow-hidden flex flex-col font-sans bg-[#050d08] ${showFlash ? 'shake-screen' : ''}`}
+      onClick={() => {
+        // Fallback global de toque ou clique de comando
+        if (gameState === GameState.REVEALED) resetGame();
+      }}
+    >
       {/* Screen Flash Effect */}
       <AnimatePresence>
         {showFlash && (
@@ -169,8 +182,22 @@ export default function App() {
         {/* Boxes Grid */}
         <div className="grid grid-cols-5 gap-6 w-full max-w-7xl">
           {[0, 1, 2, 3, 4].map((idx) => (
-            <div key={idx} className="relative aspect-[4/5] flex flex-col items-center">
+            <div 
+              key={idx} 
+              className="relative aspect-[4/5] flex flex-col items-center cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (gameState === GameState.PICKING) {
+                  setFocusedIndex(idx);
+                  handleOpen();
+                }
+              }}
+            >
               <motion.div
+                tabIndex={0}
+                onFocus={() => {
+                  if (gameState === GameState.PICKING) setFocusedIndex(idx);
+                }}
                 animate={{
                   scale: focusedIndex === idx ? 1.08 : 0.95,
                   y: focusedIndex === idx ? -15 : 0,
@@ -179,7 +206,7 @@ export default function App() {
                 transition={{
                   rotateZ: focusedIndex === idx ? { repeat: Infinity, duration: 2 } : {}
                 }}
-                className={`w-full h-full rounded-2xl border-4 transition-all duration-300 overflow-hidden relative shadow-2xl
+                className={`w-full h-full rounded-2xl border-4 transition-all duration-300 overflow-hidden relative shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/50
                   ${focusedIndex === idx 
                     ? 'border-white shadow-[0_0_50px_rgba(255,255,255,0.3)] z-20' 
                     : 'border-white/10 opacity-80'
