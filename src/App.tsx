@@ -254,13 +254,26 @@ export default function App() {
           </div>
         </div>
 
-        <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4 justify-center">
-          <div className="flex -space-x-2">
-            <div className="w-8 h-8 rounded-full bg-[#f2d47a] flex items-center justify-center border-2 border-black"><Star size={14} fill="black" /></div>
-            <div className="w-8 h-8 rounded-full bg-[#008130] flex items-center justify-center border-2 border-black"><Beer size={14} color="white" /></div>
-            <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center border-2 border-black"><Trophy size={14} color="white" /></div>
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex flex-col justify-center items-center">
+          <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-2 text-center">PRÉMIOS DISPONÍVEIS:</span>
+          <div className="flex gap-4">
+             <div className="flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-[#f2d47a]" /> 
+               <span className="text-[11px] font-black text-white uppercase italic tracking-tighter">1 Régua</span>
+             </div>
+             <div className="flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-[#008130]" /> 
+               <span className="text-[11px] font-black text-white uppercase italic tracking-tighter">3 Finos</span>
+             </div>
+             <div className="flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-[#008130]" /> 
+               <span className="text-[11px] font-black text-white uppercase italic tracking-tighter">1 Fino</span>
+             </div>
+             <div className="flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-white/20" /> 
+               <span className="text-[11px] font-black text-white/40 uppercase italic tracking-tighter">Sem Prémio</span>
+             </div>
           </div>
-          <p className="text-base font-black text-white uppercase tracking-tight">Vários Prémios em Jogo</p>
         </div>
 
         <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4 justify-end text-right">
