@@ -28,11 +28,10 @@ const PRIZE_TEMPLATES: PrizeTemplate[] = [
   { id: 'retry2', title: 'Sem Prémio', subtitle: 'Tenta outra vez!', icon: RotateCcw, isWinner: false, intensity: 'none' },
 ];
 
-const getShuffledPrizes = (brand: Brand) => {
+const getShuffledPrizes = () => {
   const arr = PRIZE_TEMPLATES.map(p => ({
     ...p,
-    brand,
-    displayTitle: p.isWinner ? `${p.title} (${brand})` : p.title
+    displayTitle: p.title
   }));
   
   for (let i = arr.length - 1; i > 0; i--) {
@@ -43,17 +42,16 @@ const getShuffledPrizes = (brand: Brand) => {
 };
 
 export default function App() {
-  const [brand, setBrand] = useState<Brand>('HEINEKEN');
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [gameState, setGameState] = useState<GameState>(GameState.PICKING);
-  const [prizes, setPrizes] = useState(() => getShuffledPrizes('HEINEKEN'));
+  const [prizes, setPrizes] = useState(() => getShuffledPrizes());
   const [lastPrize, setLastPrize] = useState<any | null>(null);
   const [selectedBoxIndex, setSelectedBoxIndex] = useState<number | null>(null);
   const [showFlash, setShowFlash] = useState(false);
 
-  const shufflePrizes = useCallback((newBrand: Brand = brand) => {
-    setPrizes(getShuffledPrizes(newBrand));
-  }, [brand]);
+  const shufflePrizes = useCallback(() => {
+    setPrizes(getShuffledPrizes());
+  }, []);
 
   const handleOpen = useCallback(() => {
     if (gameState !== GameState.PICKING) return;
@@ -79,19 +77,20 @@ export default function App() {
     setSelectedBoxIndex(null);
   }, [shufflePrizes]);
 
-  // Keyboard/Remote Handler
+  // Keyboard/Remote Handler avec mapping TV robuste
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle Brand with a specific key (e.g., 'b')
-      if (e.key.toLowerCase() === 'b') {
-        const nextBrand = brand === 'HEINEKEN' ? 'SAGRES' : 'HEINEKEN';
-        setBrand(nextBrand);
-        shufflePrizes(nextBrand);
-        return;
-      }
+      const key = e.key || '';
+      const keyCode = e.keyCode;
+
+      // Check for OK / Enter
+      const isOK = key === 'Enter' || key === 'OK' || key === 'Select' || keyCode === 13;
+      const isLeft = key === 'ArrowLeft' || keyCode === 37;
+      const isRight = key === 'ArrowRight' || keyCode === 39;
 
       if (gameState === GameState.REVEALED) {
-        if (e.key === 'Enter' || e.key === 'OK' || e.key === 'Select') {
+        if (isOK) {
+          e.preventDefault();
           resetGame();
         }
         return;
@@ -99,24 +98,21 @@ export default function App() {
 
       if (gameState !== GameState.PICKING) return;
 
-      switch (e.key) {
-        case 'ArrowLeft':
-          setFocusedIndex(prev => (prev > 0 ? prev - 1 : 4));
-          break;
-        case 'ArrowRight':
-          setFocusedIndex(prev => (prev < 4 ? prev + 1 : 0));
-          break;
-        case 'Enter':
-        case 'OK':
-        case 'Select':
-          handleOpen();
-          break;
+      if (isLeft) {
+        e.preventDefault();
+        setFocusedIndex(prev => (prev > 0 ? prev - 1 : 4));
+      } else if (isRight) {
+        e.preventDefault();
+        setFocusedIndex(prev => (prev < 4 ? prev + 1 : 0));
+      } else if (isOK) {
+        e.preventDefault();
+        handleOpen();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, handleOpen, resetGame, focusedIndex, brand, shufflePrizes]);
+  }, [gameState, handleOpen, resetGame, focusedIndex]);
 
   return (
     <div className={`relative w-full h-screen overflow-hidden flex flex-col font-sans bg-[#050d08] ${showFlash ? 'shake-screen' : ''}`}>
@@ -134,7 +130,7 @@ export default function App() {
 
       {/* Background Decorative Gradients */}
       <div className="absolute inset-0 z-0 opacity-40">
-        <div className={`absolute top-[-10%] left-1/2 -translate-x-1/2 w-[60%] h-[40%] transition-colors duration-1000 ${brand === 'HEINEKEN' ? 'bg-[radial-gradient(circle,rgba(0,129,48,0.4)_0%,transparent_70%)]' : 'bg-[radial-gradient(circle,rgba(255,43,0,0.3)_0%,transparent_70%)]'}`} />
+        <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[60%] h-[40%] bg-[radial-gradient(circle,rgba(0,129,48,0.4)_0%,transparent_70%)]" />
       </div>
 
       {/* Top Bar */}
@@ -144,21 +140,6 @@ export default function App() {
           <h1 className="text-4xl font-black text-white leading-tight">5 CAIXAS DA SORTE</h1>
         </div>
         
-        <div className="flex items-center gap-4 bg-white/5 p-2 rounded-xl border border-white/10">
-          <button 
-            onClick={() => { setBrand('SAGRES'); shufflePrizes('SAGRES'); }}
-            className={`px-4 py-2 rounded-lg font-black transition-all ${brand === 'SAGRES' ? 'bg-[#ff2b00] text-white scale-105' : 'text-white/40'}`}
-          >
-            SAGRES
-          </button>
-          <button 
-            onClick={() => { setBrand('HEINEKEN'); shufflePrizes('HEINEKEN'); }}
-            className={`px-4 py-2 rounded-lg font-black transition-all ${brand === 'HEINEKEN' ? 'bg-[#008130] text-white scale-105' : 'text-white/40'}`}
-          >
-            HEINEKEN
-          </button>
-        </div>
-
         <div className="text-right flex flex-col">
           <span className="text-xs font-black tracking-widest text-[#bfd0c2] uppercase opacity-70">Último Prémio</span>
           <span className="text-xl font-bold text-[#f2d47a]">{lastPrize ? lastPrize.displayTitle : 'Boa Sorte!'}</span>
@@ -169,14 +150,15 @@ export default function App() {
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
         <div className="mb-10 text-center">
           <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-white/5 border border-white/10 text-lg font-bold text-white/90">
-            <Zap className={`w-5 h-5 ${brand === 'HEINEKEN' ? 'text-[#008130]' : 'text-[#ff2b00]'} fill-current`} />
-            PEDE UMA RÉGUA DE {brand} PARA PARTICIPAR
-            <Zap className={`w-5 h-5 ${brand === 'HEINEKEN' ? 'text-[#008130]' : 'text-[#ff2b00]'} fill-current`} />
+            <Zap className="w-5 h-5 text-[#008130] fill-current" />
+            PEDE UMA RÉGUA PARA PARTICIPAR
+            <Zap className="w-5 h-5 text-[#008130] fill-current" />
           </div>
           <p className="mt-4 text-xl font-medium text-white/60 uppercase tracking-widest">
             {gameState === GameState.PICKING ? 'Qual será a caixa com a régua grátis?' : 'Processando sorteio...'}
           </p>
         </div>
+
 
         {/* Boxes Grid */}
         <div className="grid grid-cols-5 gap-6 w-full max-w-7xl">
@@ -201,14 +183,14 @@ export default function App() {
                 `}
               >
                 {/* Visual Content based on brand */}
-                <div className={`absolute inset-0 opacity-20 ${brand === 'HEINEKEN' ? 'bg-[#008130]' : 'bg-[#ff2b00]'}`} />
+                <div className="absolute inset-0 opacity-20 bg-[#008130]" />
                 
                 <div className="absolute inset-x-3 top-3 h-10 rounded-xl border border-white/10 bg-white/5" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                   <span className="text-[10px] font-black opacity-40 uppercase mb-1">BOX {idx + 1}</span>
                   <div className="text-3xl font-black italic tracking-tighter flex flex-col items-center">
                     <span className="text-white">CHEERS</span>
-                    <Star className={`w-8 h-8 ${brand === 'HEINEKEN' ? 'text-[#008130]' : 'text-[#ff2b00]'} fill-current`} />
+                    <Star className="w-8 h-8 text-[#008130] fill-current" />
                   </div>
                 </div>
 
@@ -229,12 +211,12 @@ export default function App() {
       {/* Footer Info */}
       <footer className="relative z-10 p-6 grid grid-cols-3 gap-6">
         <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${brand === 'HEINEKEN' ? 'bg-[#008130]/20 text-[#008130]' : 'bg-[#ff2b00]/20 text-[#ff2b00]'}`}>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#008130]/20 text-[#008130]">
             <ChevronRight className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">Modo Ativo</span>
-            <p className="text-base font-black text-white uppercase">Sorteio {brand}</p>
+            <p className="text-base font-black text-white uppercase">Sorteio Cheers</p>
           </div>
         </div>
 
@@ -242,7 +224,7 @@ export default function App() {
           <div className="flex -space-x-2">
             <div className="w-8 h-8 rounded-full bg-[#f2d47a] flex items-center justify-center border-2 border-black"><Star size={14} fill="black" /></div>
             <div className="w-8 h-8 rounded-full bg-[#008130] flex items-center justify-center border-2 border-black"><Beer size={14} color="white" /></div>
-            <div className="w-8 h-8 rounded-full bg-[#ff2b00] flex items-center justify-center border-2 border-black"><Trophy size={14} color="white" /></div>
+            <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center border-2 border-black"><Trophy size={14} color="white" /></div>
           </div>
           <p className="text-base font-black text-white uppercase tracking-tight">Vários Prémios em Jogo</p>
         </div>
@@ -273,7 +255,7 @@ export default function App() {
                   opacity: [0.3, 0.6, 0.3]
                 }}
                 transition={{ duration: 0.5, repeat: Infinity }}
-                className={`absolute inset-0 z-0 ${lastPrize.brand === 'HEINEKEN' ? 'bg-[#008130]/20' : 'bg-[#ff2b00]/20'} blur-[100px]`}
+                className="absolute inset-0 z-0 bg-[#008130]/20 blur-[100px]"
               />
             )}
 
@@ -344,7 +326,7 @@ export default function App() {
               {lastPrize.isWinner && (
                 <div className="mt-8 text-[#008130] font-black flex items-center justify-center gap-3 tracking-[0.3em]">
                   <Star size={20} fill="currentColor" />
-                  HEINEKEN & SAGRES NIGHTS
+                  CHEERS O BAR NIGHTS
                   <Star size={20} fill="currentColor" />
                 </div>
               )}
