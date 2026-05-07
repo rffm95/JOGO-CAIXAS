@@ -26,6 +26,7 @@ const PRIZE_TEMPLATES: PrizeTemplate[] = [
   { id: 'regua', title: '1 RÉGUA DE OFERTA', subtitle: 'O GRANDE PRÉMIO!', icon: Trophy, isWinner: true, intensity: 'high' },
   { id: 'retry1', title: 'Sem Prémio', subtitle: 'Mais sorte no próximo pedido', icon: RotateCcw, isWinner: false, intensity: 'none' },
   { id: 'retry2', title: 'Sem Prémio', subtitle: 'Tenta outra vez!', icon: RotateCcw, isWinner: false, intensity: 'none' },
+  { id: 'retry3', title: 'Sem Prémio', subtitle: 'Fica para a próxima!', icon: RotateCcw, isWinner: false, intensity: 'none' },
 ];
 
 const getShuffledPrizes = () => {
@@ -112,9 +113,9 @@ export default function App() {
       if (gameState !== GameState.PICKING) return;
 
       if (isLeft) {
-        setFocusedIndex(prev => (prev > 0 ? prev - 1 : 4));
+        setFocusedIndex(prev => (prev > 0 ? prev - 1 : 5));
       } else if (isRight) {
-        setFocusedIndex(prev => (prev < 4 ? prev + 1 : 0));
+        setFocusedIndex(prev => (prev < 5 ? prev + 1 : 0));
       } else if (isOK) {
         handleOpen();
       }
@@ -156,7 +157,7 @@ export default function App() {
       <header className="relative z-10 px-8 py-6 flex justify-between items-center border-b border-white/5 bg-black">
         <div className="flex flex-col">
           <span className="text-xs font-black tracking-widest text-[#bfd0c2] uppercase opacity-70">Cheers O Bar</span>
-          <h1 className="text-4xl font-black text-white leading-tight">5 CAIXAS DA SORTE</h1>
+          <h1 className="text-4xl font-black text-white leading-tight">6 CAIXAS DA SORTE</h1>
         </div>
         
         <div className="text-right flex flex-col">
@@ -180,8 +181,8 @@ export default function App() {
 
 
         {/* Boxes Grid */}
-        <div className="grid grid-cols-5 gap-6 w-full max-w-7xl">
-          {[0, 1, 2, 3, 4].map((idx) => (
+        <div className="grid grid-cols-6 gap-4 w-full max-w-[90vw]">
+          {[0, 1, 2, 3, 4, 5].map((idx) => (
             <div 
               key={idx} 
               className="relative aspect-[4/5] flex flex-col items-center cursor-pointer"
